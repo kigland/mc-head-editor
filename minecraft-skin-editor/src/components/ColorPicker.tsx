@@ -13,14 +13,12 @@ export default function ColorPicker({ selectedColor, onColorChange }: ColorPicke
 
   return (
     <div>
-      <h3>Color Picker</h3>
-      <input
-        type="color"
-        value={selectedColor}
-        onChange={(e) => onColorChange(e.target.value)}
-        style={{ width: '100%', height: '40px', marginBottom: '10px' }}
-      />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
+      <h3 style={{ marginBottom: '12px' }}>调色盘🎨</h3>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, 1fr)',
+        gap: '5px'
+      }}>
         {colors.map((color) => (
           <div
             key={color}
@@ -35,6 +33,12 @@ export default function ColorPicker({ selectedColor, onColorChange }: ColorPicke
           />
         ))}
       </div>
+      <input
+        type="color"
+        value={selectedColor}
+        onChange={(e) => onColorChange(e.target.value)}
+        style={{ width: '100%', height: '40px', marginTop: '10px' }}
+      />
     </div>
   )
 }

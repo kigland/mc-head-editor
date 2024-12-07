@@ -4,18 +4,20 @@ import { useState, useCallback, useRef } from 'react'
 import MinecraftHead from './MinecraftHead'
 import ColorPicker from './ColorPicker'
 import PixelGrid from './PixelGrid'
+import { exportGLTF } from './GLTFExporter';
+import * as THREE from 'three';
 
 type Face = 'front' | 'right' | 'back' | 'left' | 'top' | 'bottom'
 
 const createEmptyPixelGrid = () => Array(8).fill(0).map(() => Array(8).fill('#ffffff'))
 
 const FACE_LABELS: Record<Face, string> = {
-  front: 'Front',
-  right: 'Right',
-  back: 'Back',
-  left: 'Left',
-  top: 'Top',
-  bottom: 'Bottom'
+  front: '正面',
+  right: '右面',
+  back: '背面',
+  left: '左面',
+  top: '顶面',
+  bottom: '底面'
 }
 
 // 定义皮肤面部的位置映射
@@ -89,7 +91,7 @@ export default function SkinEditor() {
     }
 
     img.src = URL.createObjectURL(file)
-    
+
     // 清除文件输入，这样同一个文件可以再次选择
     event.target.value = ''
   }
@@ -124,43 +126,87 @@ export default function SkinEditor() {
     link.click()
   }
 
+  const handleDownloadModel = () => {
+    const scene = new THREE.Scene();
+    const headMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 2, 2),
+      new THREE.MeshStandardMaterial({
+        map: new THREE.CanvasTexture(createCanvasTexture(textures.front)),
+      })
+    );
+    scene.add(headMesh);
+    exportGLTF(scene);
+  };
+
+  const createCanvasTexture = (pixels: string[][]) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d')!;
+    pixels.forEach((row, y) => {
+      row.forEach((color, x) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      });
+    });
+    return canvas;
+  };
+
   return (
-    <>
-      <div style={{ 
-        flex: 1,
-        position: 'relative',
-        height: '100%'
+    <div style={{
+      display: 'flex',
+      width: '100%',
+      height: '100vh',
+      backgroundColor: '#f0f0f0'
+    }}>
+      {/* 3D Viewer - 1/3 width */}
+      <div style={{
+        width: '33.333%',
+        height: '100%',
+        backgroundColor: '#fff',
+        borderRight: '1px solid #ddd',
+        position: 'relative'
       }}>
-        <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
-          <ambientLight intensity={0.5} />
-          <pointLight position={[10, 10, 10]} />
+        <Canvas camera={{ position: [5, 5, 5], fov: 50 }} style={{ backgroundColor: '#333' }}>
+          <ambientLight intensity={1.5} />
+          <pointLight position={[5, 5, 5]} intensity={2.0} />
+          <pointLight position={[-5, 5, 5]} intensity={1.5} />
+          <pointLight position={[5, -5, 5]} intensity={1.5} />
+          <pointLight position={[-5, -5, 5]} intensity={1.0} />
           <MinecraftHead textures={textures} />
           <OrbitControls />
         </Canvas>
       </div>
-      <div style={{ 
-        width: '400px',
-        padding: '20px',
-        backgroundColor: 'white',
-        borderLeft: '1px solid #ddd',
+
+      {/* Editor Panel - 2/3 width */}
+      <div style={{
+        width: '66.666%',
         height: '100%',
-        overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: '24px'
+        backgroundColor: '#fff'
       }}>
-        {/* Header Section */}
-        <div>
-          <h2 style={{ 
+        {/* Top Bar */}
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: '1px solid #ddd',
+          backgroundColor: '#fff',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+          
+        }}>
+          <img src="/logo.svg" alt="Minecraft Logo" style={{ width: '32px', marginRight: '8px' }} />
+          <h2 style={{
             margin: 0,
-            marginBottom: '16px',
             fontSize: '24px',
             fontWeight: 'bold',
             color: '#333'
           }}>
-            Minecraft Skin Editor
+            我的世界头头编辑器
           </h2>
-          <div style={{ 
+          <div>By KIG.LAND</div>
+          <div style={{
             display: 'flex',
             gap: '8px'
           }}>
@@ -174,8 +220,7 @@ export default function SkinEditor() {
             <button
               onClick={() => fileInputRef.current?.click()}
               style={{
-                flex: 1,
-                padding: '10px',
+                padding: '8px 16px',
                 backgroundColor: '#2196F3',
                 color: 'white',
                 border: 'none',
@@ -185,18 +230,16 @@ export default function SkinEditor() {
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
                 gap: '8px'
               }}
             >
               <span style={{ fontSize: '18px' }}>↑</span>
-              Import Skin
+              导入
             </button>
             <button
               onClick={handleExport}
               style={{
-                flex: 1,
-                padding: '10px',
+                padding: '8px 16px',
                 backgroundColor: '#4CAF50',
                 color: 'white',
                 border: 'none',
@@ -206,86 +249,119 @@ export default function SkinEditor() {
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
                 gap: '8px'
               }}
             >
               <span style={{ fontSize: '18px' }}>↓</span>
-              Export Skin
+              导出
+            </button>
+            <button
+              onClick={handleDownloadModel}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#9C27B0',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              下载 3D 模型
             </button>
           </div>
         </div>
 
-        {/* Color Picker Section */}
+        {/* Editor Content */}
         <div style={{
-          backgroundColor: '#f5f5f5',
-          padding: '16px',
-          borderRadius: '8px'
+          flex: 1,
+          padding: '24px',
+          overflowY: 'auto',
+          display: 'flex',
+          gap: '24px'
         }}>
-          <h3 style={{ 
-            margin: 0,
-            marginBottom: '12px',
-            fontSize: '16px',
-            fontWeight: '500',
-            color: '#333'
-          }}>
-            Color Picker
-          </h3>
-          <ColorPicker
-            selectedColor={selectedColor}
-            onColorChange={setSelectedColor}
-          />
-        </div>
-
-        {/* Pixel Editor Section */}
-        <div style={{
-          backgroundColor: '#f5f5f5',
-          padding: '16px',
-          borderRadius: '8px',
-          flex: 1
-        }}>
-          <h3 style={{ 
-            margin: 0,
-            marginBottom: '16px',
-            fontSize: '16px',
-            fontWeight: '500',
-            color: '#333'
-          }}>
-            Face Editor
-          </h3>
-          <div style={{ 
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
+          {/* Color Picker Column */}
+          <div style={{
+            width: '200px',
+            display: 'flex',
+            flexDirection: 'column',
             gap: '16px'
           }}>
-            {(Object.keys(FACE_LABELS) as Face[]).map(face => (
-              <div key={face} style={{
-                backgroundColor: 'white',
-                padding: '12px',
-                borderRadius: '4px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            <div style={{
+              backgroundColor: '#f5f5f5',
+              padding: '16px',
+              borderRadius: '8px'
+            }}>
+              <h3 style={{
+                margin: 0,
+                marginBottom: '12px',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#333'
               }}>
-                <h4 style={{ 
-                  margin: 0,
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#666'
+                颜色选择
+              </h3>
+              <ColorPicker
+                selectedColor={selectedColor}
+                onColorChange={setSelectedColor}
+              />
+            </div>
+          </div>
+
+          {/* Face Editor Grid */}
+          <div style={{
+            flex: 1,
+            backgroundColor: '#f5f5f5',
+            padding: '16px',
+            borderRadius: '8px'
+          }}>
+            <h3 style={{
+              margin: 0,
+              marginBottom: '16px',
+              fontSize: '16px',
+              fontWeight: '500',
+              color: '#333'
+            }}>
+              面部编辑
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '16px'
+            }}>
+              {(Object.keys(FACE_LABELS) as Face[]).map(face => (
+                <div key={face} style={{
+                  backgroundColor: 'white',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                 }}>
-                  {FACE_LABELS[face]}
-                </h4>
-                <PixelGrid
-                  width={8}
-                  height={8}
-                  selectedColor={selectedColor}
-                  pixels={textures[face]}
-                  onPixelClick={(x, y) => handlePixelClick(face, x, y)}
-                />
-              </div>
-            ))}
+                  <h4 style={{
+                    margin: 0,
+                    marginBottom: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#666'
+                  }}>
+                    {FACE_LABELS[face]}
+                  </h4>
+                  <PixelGrid
+                    width={8}
+                    height={8}
+                    selectedColor={selectedColor}
+                    pixels={textures[face]}
+                    onPixelClick={(x, y) => handlePixelClick(face, x, y)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
